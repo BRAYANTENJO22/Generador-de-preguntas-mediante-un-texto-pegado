@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Preguntas de Examen - UNISANGIL</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome & Fuentes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-dark text-light">
+
+    <!-- BARRA SUPERIOR WCAG ACCESIBILIDAD -->
+    <div class="accessibility-bar sticky-top py-2 px-3 bg-dark border-bottom border-secondary" role="region" aria-label="Controles de Accesibilidad">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="a11y-group d-flex align-items-center gap-2">
+                <span class="fs-7 me-2"><i class="fa-solid fa-universal-access me-1"></i> Accesibilidad WCAG 2.1:</span>
+                <button id="btn-increase-font" type="button" class="btn btn-sm btn-outline-light" aria-label="Aumentar fuente">A+</button>
+                <button id="btn-decrease-font" type="button" class="btn btn-sm btn-outline-light" aria-label="Disminuir fuente">A-</button>
+                <button id="btn-toggle-contrast" type="button" class="btn btn-sm btn-outline-warning" aria-label="Alto Contraste"><i class="fa-solid fa-circle-half-stroke me-1"></i> Contraste</button>
+                <button id="btn-focus-highlight" type="button" class="btn btn-sm btn-outline-info" aria-label="Resaltar Enfoque"><i class="fa-solid fa-border-all me-1"></i> Foco</button>
+            </div>
+            <div id="a11y-announcer" class="badge bg-secondary" aria-live="polite">Panel Accesible Activo</div>
+        </div>
+    </div>
+
+    <!-- HERO HEADER -->
+    <header class="main-header text-center py-5">
+        <div class="container">
+            <span class="badge rounded-pill bg-purple-subtle text-cyan border border-info mb-3 px-3 py-2">
+                <i class="fa-solid fa-microchip me-1"></i> Modelo NLP Local • 0 Dependencias
+            </span>
+            <h1 class="fw-bold display-5 text-light">Generador de preguntas de examen a partir de un texto pegado, <span class="text-gradient">con un modelo local</span></h1>
+            <p class="lead text-light-50 mx-auto" style="max-width: 700px;">Convierte apuntes y textos en evaluaciones estructuradas directamente en tu navegador.</p>
+        </div>
+    </header>
+
+    <main class="container pb-5">
+        <div class="row g-4">
+            <div class="col-12">
+    <div id="status-message" class="d-none" role="status" aria-live="polite"></div>
+</div>
+            <!-- FORMULARIO DE ENTRADA -->
+            <div class="col-12">
+                <div class="card bg-surface border-secondary shadow-lg">
+                    <div class="card-header bg-transparent border-secondary d-flex align-items-center gap-2 py-3">
+                        <i class="fa-solid fa-wand-magic-sparkles text-info fs-4"></i>
+                        <h2 class="h5 mb-0 fw-bold text-light">1. Ingrese el Texto de Estudio</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="exam-form">
+                            <div class="mb-3">
+                                <label for="text-input" class="form-label text-light fw-semibold">Contenido de Origen:</label>
+                                <textarea id="text-input" class="form-control bg-dark text-light border-secondary" rows="6" placeholder="Pega aquí el capítulo, apuntes o texto desde el cual deseas generar el examen..." required></textarea>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label for="num-questions" class="form-label text-light fw-semibold">Número de Preguntas:</label>
+                                    <select id="num-questions" class="form-select bg-dark text-light border-secondary">
+                                        <option value="3">3 Preguntas (Procesamiento Express)</option>
+                                        <option value="5" selected>5 Preguntas (Recomendado)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="xss-protection" class="form-label text-light fw-semibold">Seguridad de Entradas (Anti-XSS):</label>
+                                    <select id="xss-protection" class="form-select bg-dark text-light border-secondary">
+                                        <option value="safe" selected>Sanitización Activa (Seguro)</option>
+                                        <option value="unsafe">Modo Vulnerable (Demostración)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-gradient btn-lg w-100 fw-bold shadow">
+                                <i class="fa-solid fa-bolt me-2"></i> Procesar e Inferir Examen
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPINNER DE CARGA -->
+            <div class="col-12">
+                <div id="loading-spinner" class="card bg-surface border-secondary text-center py-5 d-none">
+                    <div class="spinner-border text-info mx-auto mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <h3 class="h5 fw-bold text-light">Ejecutando Modelo In-Browser (Async/Await)...</h3>
+                    <p class="text-light-50 small mb-0">Extrayendo entidades clave y generando distractores en tiempo real.</p>
+                </div>
+            </div>
+
+            <!-- RESULTADOS -->
+            <div class="col-12">
+                <section id="results-section" class="card bg-surface border-secondary shadow-lg d-none">
+                    <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center py-3">
+                        <h2 class="h5 mb-0 fw-bold text-light"><i class="fa-solid fa-file-signature text-info me-2"></i> 2. Examen Generado</h2>
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fw-bold">
+                            <i class="fa-solid fa-clock me-1"></i> Inferencia: <span id="perf-time">0 ms</span>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div id="questions-container" class="d-flex flex-column gap-3"></div>
+
+                        <div class="row g-2 mt-4">
+                            <div class="col-md-4">
+                                <button id="btn-export-txt" type="button" class="btn btn-success w-100 fw-bold">
+                                    <i class="fa-solid fa-file-arrow-down me-2"></i> Descargar Examen (.txt)
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button id="btn-export-print" type="button" class="btn btn-secondary w-100 fw-bold">
+                                    <i class="fa-solid fa-print me-2"></i> Guardar como PDF / Imprimir
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button id="btn-clear-storage" type="button" class="btn btn-danger w-100 fw-bold">
+                                    <i class="fa-solid fa-trash-can me-2"></i> Borrar Guardado
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-4 text-light-50 border-top border-secondary">
+        <p class="mb-0 small">&copy; 2026 - Generador de preguntas de examen • UNISANGIL</p>
+    </footer>
+
+    <!-- JS Módulos -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
