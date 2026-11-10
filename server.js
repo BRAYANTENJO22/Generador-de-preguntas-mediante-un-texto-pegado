@@ -32,25 +32,41 @@ app.post('/api/generate-exam', (req, res) => {
             cleanText = sanitizeServerInput(text);
         }
 
-        const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 15);
+        // Misma logica que js/generator.js: separa por puntuacion Y saltos de linea,
+        // acepta frases cortas y siempre devuelve al menos una pregunta.
+        let sentences = cleanText.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 8);
+        if (sentences.length === 0) {
+            sentences = [cleanText.trim()];
+        }
+
         const generatedQuestions = [];
-        const maxQuestions = limit ? parseInt(limit) : 5;
+        const parsedLimit = parseInt(limit, 10);
+        const maxQuestions = Number.isNaN(parsedLimit) ? 5 : parsedLimit;
 
         for (let i = 0; i < Math.min(sentences.length, maxQuestions); i++) {
-            const sentence = sentences[i].trim();
-            const words = sentence.split(' ').filter(w => w.length > 4);
+            const sentence = sentences[i];
+            const words = sentence.split(/\s+/).filter(w => w.length > 3);
 
             if (words.length > 0) {
                 const keyword = words[Math.floor(Math.random() * words.length)];
                 const questionText = sentence.replace(keyword, "________");
 
                 generatedQuestions.push({
-                    id: i + 1,
-                    question: `Pregunta ${i + 1}: Complete el concepto: "${questionText}"`,
+                    id: generatedQuestions.length + 1,
+                    question: `Pregunta ${generatedQuestions.length + 1}: Complete el concepto: "${questionText}"`,
                     correctAnswer: keyword,
                     options: [keyword, "Concepto Alternativo", "Variable Global", "Parámetro Base"].sort(() => Math.random() - 0.5)
                 });
             }
+        }
+
+        if (generatedQuestions.length === 0) {
+            generatedQuestions.push({
+                id: 1,
+                question: "Pregunta 1: ¿El contenido ingresado abarca el tema principal del texto pegado?",
+                correctAnswer: "Verdadero",
+                options: ["Verdadero", "Falso"]
+            });
         }
 
         return res.status(200).json({ status: 'success', data: generatedQuestions });
@@ -61,4 +77,4 @@ app.post('/api/generate-exam', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Servidor Express listo en http://localhost:${PORT}`);
-}); 
+});

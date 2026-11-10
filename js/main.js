@@ -73,28 +73,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const startTime = performance.now();
 
             try {
-                // Se llama al backend con fetch + async/await
-                currentQuestions = await requestExam(rawText, numQuestions, xssMode);
-                const executionTime = (performance.now() - startTime).toFixed(2);
+                // 1) Pedir el examen al servidor. Solo un fallo de red (TypeError del fetch)
+                //    activa el respaldo local; los errores del servidor se muestran tal cual.
+                let questions;
+                let usedFallback = false;
 
+                try {
+                    questions = await requestExam(rawText, numQuestions, xssMode);
+                } catch (error) {
+                    console.error('Error al consultar el servidor:', error);
+                    if (error instanceof TypeError) {
+                        questions = generateLocalExam(rawText, numQuestions, xssMode);
+                        usedFallback = true;
+                    } else {
+                        showMessage(`No se pudo generar el examen: ${error.message}`, 'danger');
+                        return;
+                    }
+                }
+
+                // Si por cualquier motivo llega una lista vacia, se usa el generador local
+                if (!Array.isArray(questions) || questions.length === 0) {
+                    questions = generateLocalExam(rawText, numQuestions, xssMode);
+                }
+
+                // 2) Mostrar y guardar. Un error aqui ya NO se confunde con "sin conexion".
+                currentQuestions = questions;
+                const executionTime = (performance.now() - startTime).toFixed(2);
                 showResults(currentQuestions, `${executionTime} ms`);
                 saveToLocalStorage(currentQuestions, executionTime);
-                showMessage('Examen generado correctamente.', 'success');
 
-                if (resultsSection) resultsSection.scrollIntoView({ behavior: 'smooth' });
-            } catch (error) {
-                console.error('Error al consultar el servidor:', error);
-
-                // Respaldo: si el servidor no responde, se genera en el navegador
-                if (error instanceof TypeError) {
-                    currentQuestions = generateLocalExam(rawText, numQuestions, xssMode);
-                    const executionTime = (performance.now() - startTime).toFixed(2);
-                    showResults(currentQuestions, `${executionTime} ms`);
-                    saveToLocalStorage(currentQuestions, executionTime);
+                if (usedFallback) {
                     showMessage('No hubo conexión con el servidor; el examen se generó en el navegador.', 'warning');
                 } else {
-                    showMessage(`No se pudo generar el examen: ${error.message}`, 'danger');
+                    showMessage('Examen generado correctamente.', 'success');
                 }
+
+                if (resultsSection) resultsSection.scrollIntoView({ behavior: 'smooth' });
             } finally {
                 if (loadingSpinner) loadingSpinner.classList.add('d-none');
                 if (submitButton) submitButton.disabled = false;
